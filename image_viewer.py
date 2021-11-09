@@ -42,7 +42,14 @@ def stratified_species_shuffle(species_df, return_species_df=False):
 class ImageViewer(QtWidgets.QGraphicsView):
     factor = 2.0
 
-    def __init__(self, ROOT_FOLDER, IMAGE_FOLDER, FINAL_MASKS_FOLDER, EXISTING_MASKS_FOLDER, parent=None):
+    def __init__(
+        self,
+        ROOT_FOLDER,
+        IMAGE_FOLDER,
+        FINAL_MASKS_FOLDER,
+        EXISTING_MASKS_FOLDER,
+        parent=None,
+    ):
         super().__init__(parent)
         self.setMouseTracking(True)
         self.zoomed = 1
@@ -54,8 +61,8 @@ class ImageViewer(QtWidgets.QGraphicsView):
         #
         self.files = sorted(os.listdir(self.IMAGE_FOLDER))
         # self.files = [x for x in self.files if int(x.split('/')[-1].split('_')[1]) < 200]
-        #self.sps = pd.read_csv(os.path.join(self.ROOT_FOLDER, "bounding_boxes.csv"))
-        #species = [
+        # self.sps = pd.read_csv(os.path.join(self.ROOT_FOLDER, "bounding_boxes.csv"))
+        # species = [
         #    "Rugilus similis",
         #    "Rugilus geniculatus",
         #    "Scopaeus minimus",
@@ -74,12 +81,12 @@ class ImageViewer(QtWidgets.QGraphicsView):
         #    "Platydracus chalcocephalus",
         #    "Quedius invreae",
         #    "Quedius nemoralis",
-        #]
-        #self.sps = self.sps[self.sps["species"].map(lambda x: x in species)]
+        # ]
+        # self.sps = self.sps[self.sps["species"].map(lambda x: x in species)]
         self.file_no = 0
-        #self.files, self.sps = stratified_species_shuffle(
+        # self.files, self.sps = stratified_species_shuffle(
         #    self.sps, return_species_df=True
-        #)
+        # )
 
         final_segs = [
             os.path.basename(x)
@@ -104,6 +111,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
         self._pixmap_item.mouseMoveEvent = self._mouseMoveEvent
         self._pixmap_item.mouseReleaseEvent = self._mouseReleaseEvent
         self.scene.addItem(self._pixmap_item)
+        self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 
         self.viewport().installEventFilter(self)
         # self.scene.installEventFilter(self)
@@ -204,6 +212,17 @@ class ImageViewer(QtWidgets.QGraphicsView):
             self.manual_beetles_hist += [self.manual_beetle.copy()]
             self.manual_backgrounds_hist += [self.manual_background.copy()]
             self.history_cursor = len(self.manual_beetles_hist)
+        elif event.button() == Qt.MidButton:
+            # for changing back to Qt.OpenHandCursor
+            self.viewport().setCursor(Qt.OpenHandCursor)
+            handmade_event = QtGui.QMouseEvent(
+                QEvent.MouseButtonRelease,
+                QtCore.QPointF(event.pos()),
+                Qt.LeftButton,
+                event.buttons(),
+                Qt.KeyboardModifiers(),
+            )
+            self.mouseReleaseEvent(handmade_event)
 
     def _mousePressEvent(self, event):
         x = int(event.pos().x())
@@ -258,7 +277,17 @@ class ImageViewer(QtWidgets.QGraphicsView):
                     segment = self.segments[y, x]
                     self.manual_beetle[np.where(self.segments == segment)] = 0
                     self.manual_background[np.where(self.segments == segment)] = 255
-
+        elif event.button() == Qt.MidButton:
+            self.viewport().setCursor(Qt.ClosedHandCursor)
+            self.original_event = event
+            handmade_event = QtGui.QMouseEvent(
+                QEvent.MouseButtonPress,
+                QtCore.QPointF(event.pos()),
+                Qt.LeftButton,
+                event.buttons(),
+                Qt.KeyboardModifiers(),
+            )
+            self.mousePressEvent(handmade_event)
         self.refreshImage()
 
     def load_image(self, filePath, opacity=0.5, mask_threshold=0.5):
@@ -298,28 +327,24 @@ class ImageViewer(QtWidgets.QGraphicsView):
             "Perc Done: %s" % (self.file_no / len(self.files))
         )
 
-        #no_species_left = len(
+        # no_species_left = len(
         #    self.sps.iloc[self.file_no :]["species"].drop_duplicates()
-        #)
+        # )
 
-        #self.parent.side_bar_widget.species_left.setText(
+        # self.parent.side_bar_widget.species_left.setText(
         #    "No. Sps Left: %s" % no_species_left
-        #)
+        # )
 
         return True
 
     def load_next_img(self):
         self.file_no = min(self.file_no + 1, len(self.files))
 
-        self.load_image(
-            os.path.join(self.IMAGE_FOLDER, self.files[self.file_no])
-        )
+        self.load_image(os.path.join(self.IMAGE_FOLDER, self.files[self.file_no]))
 
     def load_prev_img(self):
         self.file_no = max(self.file_no - 1, 0)
-        self.load_image(
-            os.path.join(self.IMAGE_FOLDER, self.files[self.file_no])
-        )
+        self.load_image(os.path.join(self.IMAGE_FOLDER, self.files[self.file_no]))
 
     def refreshImage(
         self,
