@@ -51,6 +51,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
         parent=None,
     ):
         super().__init__(parent)
+        self.just_drag = False
         self.setMouseTracking(True)
         self.zoomed = 1
         self.parent = parent
@@ -207,7 +208,11 @@ class ImageViewer(QtWidgets.QGraphicsView):
         self.refreshImage()
 
     def _mouseReleaseEvent(self, event):
-        if (event.button() == Qt.LeftButton) or (event.button() == Qt.RightButton):
+        if (
+            (event.button() == Qt.LeftButton)
+            or (event.button() == Qt.RightButton)
+            and (self.just_drag == False)
+        ):
             self.drawing = False
             self.manual_beetles_hist += [self.manual_beetle.copy()]
             self.manual_backgrounds_hist += [self.manual_background.copy()]
@@ -222,12 +227,14 @@ class ImageViewer(QtWidgets.QGraphicsView):
                 event.buttons(),
                 Qt.KeyboardModifiers(),
             )
+            self.just_drag = True
             self.mouseReleaseEvent(handmade_event)
+            self.just_drag = False
 
     def _mousePressEvent(self, event):
         x = int(event.pos().x())
         y = int(event.pos().y())
-        if event.button() == Qt.LeftButton:
+        if (event.button() == Qt.LeftButton) and (self.just_drag == False):
 
             self.resetManualHistToCursor()
             self.drawing = True
@@ -252,7 +259,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
                     segment = self.segments[y, x]
                     self.manual_beetle[np.where(self.segments == segment)] = 255
                     self.manual_background[np.where(self.segments == segment)] = 0
-        elif event.button() == Qt.RightButton:
+        elif (event.button() == Qt.RightButton) and (self.just_drag == False):
             self.resetManualHistToCursor()
             self.drawing = True
 
@@ -287,7 +294,9 @@ class ImageViewer(QtWidgets.QGraphicsView):
                 event.buttons(),
                 Qt.KeyboardModifiers(),
             )
+            self.just_drag = True
             self.mousePressEvent(handmade_event)
+            self.just_drag = False
         self.refreshImage()
 
     def load_image(self, filePath, opacity=0.5, mask_threshold=0.5):
