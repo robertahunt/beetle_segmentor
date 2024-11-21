@@ -13,10 +13,10 @@ from sidebar import SideBarWidget
 from image_viewer import ImageViewer
 
 # name of the masks, if already using preexisting needs to be the same name as the images
-ROOT_FOLDER = "/mnt/newterra/Dropbox/05. 2024 Postdoc/04. ACCESS 2024/2_live_bees"
-IMAGE_FOLDER = os.path.join(ROOT_FOLDER, "6_cropped_and_flipped")
-EXISTING_MASKS_FOLDER = os.path.join(ROOT_FOLDER, "9_UNet_predictions_resized")
-FINAL_MASKS_FOLDER = os.path.join(ROOT_FOLDER, "9_UNet_predictions_resized_manual_corrections")
+ROOT_FOLDER = "/mnt/newterra/Dropbox/05. 2024 Postdoc/04. ACCESS 2024/1_slides"
+IMAGE_FOLDER = os.path.join(ROOT_FOLDER, "2_individual_wings")
+EXISTING_MASKS_FOLDER = os.path.join(ROOT_FOLDER, "6_UNet_predictions_resized")
+FINAL_MASKS_FOLDER = os.path.join(ROOT_FOLDER, "6_UNet_predictions_resized_manual_corrections")
 SUBSET = [
 'Hive01_Sheet_02_slideww43_left.png',
  'Hive01_Sheet_02_slideww43_right.png',
