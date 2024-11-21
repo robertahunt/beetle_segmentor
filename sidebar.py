@@ -12,6 +12,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 import matplotlib.pyplot as plt
+from PyQt5.QtGui import QIntValidator
+
+
 
 
 class SideBarWidget(QWidget):
@@ -61,6 +64,17 @@ class SideBarWidget(QWidget):
         # down_button.clicked.connect(self.parent.view.shiftMaskDown)
         # layout.addWidget(down_button)
 
+        current_class = QComboBox()
+        current_class.addItems(list(map(str, range(1,self.parent.view.NUM_CLASSES))))
+        current_class.setCurrentIndex(0)
+        self.current_class = current_class
+        self.current_class_label = QLabel(
+            "Current Annotation Class: %s" % self.current_class.currentText() #.value*
+        )
+        layout.addWidget(self.current_class_label)
+        layout.addWidget(self.current_class)
+        self.current_class.currentIndexChanged.connect(self.parent.view.changeCurrentClass)
+
         label = QLabel("Mask Opacity:")
         layout.addWidget(label)
 
@@ -97,22 +111,22 @@ class SideBarWidget(QWidget):
         self.use_brush.toggled.connect(self.parent.view.toggleBrush)
         layout.addWidget(self.use_brush)
 
-        superpixel_scale = QSlider(Qt.Horizontal)
-        superpixel_scale.setFocusPolicy(Qt.StrongFocus)
-        superpixel_scale.setTickPosition(QSlider.TicksBothSides)
-        superpixel_scale.setMaximum(1000)
-        superpixel_scale.setMinimum(0)
-        superpixel_scale.setSingleStep(5)
-        superpixel_scale.setValue(400)
+        self.zoom_to_mask = QCheckBox("Zoom to Mask?")
+        self.zoom_to_mask.setChecked(False)
+        self.zoom_to_mask.toggled.connect(self.parent.view.zoomToMask)
+        layout.addWidget(self.zoom_to_mask)
+
+        superpixel_scale = QComboBox()
+        superpixel_scale.addItems(['2','4','8','16','32','64','128','256','512','1024','2048'])
+        superpixel_scale.setCurrentIndex(6)
+
         self.superpixel_scale = superpixel_scale
         self.scale_label = QLabel(
-            "Superpixel No. Segments: %s" % self.superpixel_scale.value()
+            "Superpixel No. Segments: %s" % self.superpixel_scale.currentText() #.value*
         )
         layout.addWidget(self.scale_label)
         layout.addWidget(self.superpixel_scale)
-        self.superpixel_scale.valueChanged.connect(
-            self.parent.view.changeSuperpixelScale
-        )
+        self.superpixel_scale.currentIndexChanged.connect(self.parent.view.changeSuperpixelScale)
 
         superpixel_compactness = QSlider(Qt.Horizontal)
         superpixel_compactness.setFocusPolicy(Qt.StrongFocus)
@@ -146,8 +160,6 @@ class SideBarWidget(QWidget):
             self.parent.view.changeSuperpixelSigma
         )
 
-        label = QLabel("Mask Threshold:")
-        layout.addWidget(label)
 
         slider = QSlider(Qt.Horizontal)
         slider.setFocusPolicy(Qt.StrongFocus)
@@ -156,11 +168,6 @@ class SideBarWidget(QWidget):
         slider.setMinimum(0)
         slider.setSingleStep(5)
         slider.setValue(50)
-        self.segmentation_mask_threshold = slider
-        layout.addWidget(self.segmentation_mask_threshold)
-        self.segmentation_mask_threshold.valueChanged.connect(
-            self.parent.view.changeMaskThreshold
-        )
 
         label = QLabel("Rotation:")
         layout.addWidget(label)
@@ -168,34 +175,7 @@ class SideBarWidget(QWidget):
         layout.addWidget(self.rotation)
         self.rotation.setText("0")
 
-        self.okay_for_study = QCheckBox("1 Okay for my study")
-        layout.addWidget(self.okay_for_study)
 
-        self.genitalia_separated = QCheckBox("2 Genitalia Separated")
-        layout.addWidget(self.genitalia_separated)
-
-        self.missing_body_parts = QCheckBox("3 Missing Body Parts")
-        layout.addWidget(self.missing_body_parts)
-
-        self.body_parts_separated_from_body = QCheckBox(
-            "4 Body parts separated from body"
-        )
-        layout.addWidget(self.body_parts_separated_from_body)
-
-        self.standard_pose = QCheckBox("5 Standard Pose")
-        layout.addWidget(self.standard_pose)
-
-        self.good_segmentation = QCheckBox("6 Good Segmentation")
-        layout.addWidget(self.good_segmentation)
-
-        self.bad_bounding_box = QCheckBox("7 Bad Bounding Box")
-        layout.addWidget(self.bad_bounding_box)
-
-        label = QLabel("Orientation:")
-        layout.addWidget(label)
-        self.orientation = QComboBox()
-        self.orientation.addItems(["dorsal", "ventral", "other"])
-        layout.addWidget(self.orientation)
 
     def get_or_set_meta(self, img_meta, key, default_value):
         if img_meta.get(key, None) is None:
@@ -230,19 +210,6 @@ class SideBarWidget(QWidget):
         else:
             img_meta = {}
         img_meta["rotation"] = self.rotation.text()
-        img_meta["okay_for_study"] = self.okay_for_study.isChecked()
-        img_meta["genitalia_separated"] = self.genitalia_separated.isChecked()
-        img_meta[
-            "segmentation_mask_threshold"
-        ] = self.segmentation_mask_threshold.value()
-        img_meta["bad_bounding_box"] = self.bad_bounding_box.isChecked()
-        img_meta["missing_body_parts"] = self.missing_body_parts.isChecked()
-        img_meta[
-            "body_parts_separated_from_body"
-        ] = self.body_parts_separated_from_body.isChecked()
-        img_meta["orientation"] = self.orientation.currentText()
-        img_meta["standard_pose"] = self.standard_pose.isChecked()
-        img_meta["good_segmentation"] = self.good_segmentation.isChecked()
 
         json_formatted_str = json.dumps(img_meta, indent=4)
 
@@ -260,12 +227,3 @@ class SideBarWidget(QWidget):
             with open(fp, "r") as f:
                 img_meta = json.load(f)
         self.get_or_set_meta(img_meta, "rotation", "0")
-        self.get_or_set_meta(img_meta, "okay_for_study", False)
-        self.get_or_set_meta(img_meta, "missing_body_parts", False)
-        self.get_or_set_meta(img_meta, "body_parts_separated_from_body", False)
-        self.get_or_set_meta(img_meta, "orientation", "dorsal")
-        self.get_or_set_meta(img_meta, "standard_pose", True)
-        self.get_or_set_meta(img_meta, "good_segmentation", True)
-        self.get_or_set_meta(img_meta, "genitalia_separated", False)
-        self.get_or_set_meta(img_meta, "segmentation_mask_threshold", 50)
-        self.get_or_set_meta(img_meta, "bad_bounding_box", False)
